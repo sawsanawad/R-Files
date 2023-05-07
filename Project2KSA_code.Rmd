@@ -1,0 +1,232 @@
+---
+title: "Capstone Portfolio"
+author: "Sawsan Awad"
+date: "5/1/2023"
+output:
+   bookdown::pdf_document2:
+    keep_tex: true
+    toc: yes
+    toc_depth: '4'
+    number_sections: yes
+    fig_caption: yes
+bibliography: STAT6382.class.bib
+---
+
+```{r}
+##building the data
+library(readxl)
+library(astsa)
+library(TSA)
+library(forecast)
+library(tseries)
+
+#read the data
+Alldata = read_xlsx("SaudiData.xlsx", sheet = "REAL NON OIL GDP MILLIONS SAR")
+
+#print summary of GDP data
+summary(Alldata)[,c(9,10,11)]
+
+
+#time series plot of oil GDP, non oil GDP, total GDP
+
+OilGDP = ts(Alldata$OilGDP, start = 1970, end = c(2022), frequency = 1)
+NonOilGDP = ts(Alldata$NonOilGDP, start = 1970, end = c(2022), frequency = 1)
+TotalGDP = ts(Alldata$TotalGDP, start = 1970, end = c(2022), frequency = 1)
+plot(TotalGDP, ylim = c(0,3000000),
+     col = "green",
+     main = "KSA GDP By Main Economic Activities",
+     ylab = "GDP (Million Of Saudi Riyals)")
+lines(NonOilGDP, col = "red", lwd = 2)
+lines(OilGDP, col = "blue")
+legend("bottomright", legend=c("Total GDP", "Non-Oil GDP", "Oil GDP"),
+       col = c("green", "red", "blue"),
+       lty = 1)
+```
+
+```{r}
+#non oil GDP forecast
+plot(NonOilGDP)
+acf(NonOilGDP, 100)
+
+#log to remove the upward trend
+LOG.NonOilGDP = log(NonOilGDP)
+plot(LOG.NonOilGDP)
+acf2(LOG.NonOilGDP, max.lag = 20)
+
+#data still looks non stationary. So, second thing is differencing of the log
+log.diff.NonOilGDP = log(diff(NonOilGDP))
+plot(log.diff.NonOilGDP)
+acf2(log.diff.NonOilGDP, max.lag = 20)
+
+#log did not work
+#tried another way, first and second order differencing
+
+diff.NonOilGDP = diff(NonOilGDP)
+plot(diff.NonOilGDP)
+acf(diff.NonOilGDP, max.lag = 20)
+
+statiorary.NonOilGDP = diff(diff(NonOilGDP), 1)
+acf(statiorary.NonOilGDP,  max.lag = 20)
+acf2(statiorary.NonOilGDP,  max.lag = 20)
+plot(statiorary.NonOilGDP)
+
+#data is stationary after second order differencing
+
+#select two models
+fit1 = Arima(NonOilGDP,order=c(1, 2, 0))
+fit1
+fit2 = Arima(NonOilGDP,order=c(2, 2, 0))
+fit2
+
+#evaluate residuals
+checkresiduals(fit1)
+checkresiduals(fit2)
+
+#AIC and BIC
+evaluateAIC1 = round(AIC(fit1),2)
+evaluateAIC1
+evaluateAIC2 = round(AIC(fit2),2)
+evaluateAIC2
+evaluateBIC1 = round(BIC(fit1),2)
+evaluateBIC1
+evaluateBIC2 = round(BIC(fit2),2)
+evaluateBIC2
+
+#forecast with best model
+plot(forecast(fit1, h=7))
+
+#plot the original data with the fitted model
+plot(fit1$x)
+lines(fit1$fitted, col = "red")
+legend("bottomright", legend=c("Original Data", "Predicted using ARIMA(1,2,0)"),
+       col = c("black", "red"),
+       lty = 1)
+```
+
+```{r}
+#FDI forecast
+FDI = ts(Alldata$`FDI Inflows USD Billions`, start = 1970, end = c(2021), frequency = 1)
+plot(FDI)
+acf(FDI)
+
+#first order diff to stationarize the data
+plot(diff(FDI))
+acf(diff(FDI))
+acf2(diff(FDI))
+
+#select two models
+fitFDI1 = Arima(FDI,order=c(1, 1, 0))
+fitFDI1
+fitFDI2 = Arima(FDI,order=c(1, 0, 0))
+fitFDI2
+
+#evaluate residuals
+checkresiduals(fitFDI1)
+checkresiduals(fitFDI2)
+
+#AIC and BIC
+fdiaic1 = round(AIC(fitFDI1),2)
+fdiaic1
+fdiaic2 = round(AIC(fitFDI2),2)
+fdiaic2
+fdibic1 = round(BIC(fitFDI1),2)
+fdibic1
+fdibic2 = round(BIC(fitFDI2),2)
+fdibic2
+
+#forecast using best model
+plot(forecast(fitFDI1, h = 7))
+
+#plot the original data with the fitted model
+plot(fitFDI1$x)
+lines(fitFDI1$fitted, col = "red")
+legend("topleft", legend=c("Original Data", "Predicted using ARIMA(1,1,0)"),
+       col = c("black", "red"),
+       lty = 1)
+```
+
+```{r}
+#non oil exports forecast
+exportsdata = subset(Alldata,YEAR > 2004, select = `NON OIL EXPORTS IN MILLIONS SAR`)
+exports = ts(exportsdata$`NON OIL EXPORTS IN MILLIONS SAR`, start = 2005, end = c(2022), frequency = 1)
+
+plot(exports)
+acf2(exports)
+
+#first order diff to stationarize the data
+plot(diff(exports))
+acf(diff(exports))
+acf2(diff(exports))
+
+#select two models
+exportsfit1 = Arima(exports,order=c(2, 1, 1))
+exportsfit1
+exportsfit2 = Arima(exports,order=c(1, 1, 2))
+exportsfit2
+
+#evaluate residuals
+checkresiduals(exportsfit1)
+checkresiduals(exportsfit2)
+
+#AIC and BIC
+exaic1 = round(AIC(exportsfit1),2)
+exaic1
+exaic2 = round(AIC(exportsfit2),2)
+exaic2
+exbic1 = round(BIC(exportsfit1),2)
+exbic1
+exbic2 = round(BIC(exportsfit2),2)
+exbic2
+
+#forecast using best model
+exportsforecast1 = forecast(exportsfit1, h = 7)
+plot(forecast(exportsfit1, h = 7))
+
+#plot the original data with the fitted model
+plot(exportsfit1$x)
+lines(exportsfit1$fitted, col = "red")
+legend("bottomright", legend=c("Original Data", "ARIMA(2,1,1)"),
+       col = c("black", "red"),
+       lty = 1)
+```
+
+
+```{r}
+#food revenue forecast
+data2 = subset(Alldata, YEAR >= 2010 & YEAR <= 2020, select = FoodAndBeverageActivities)
+food = ts(data2$FoodAndBeverageActivities, start = 2010, end = 2020, frequency = 1)
+plot(food)
+acf(food)
+
+#first order differencing
+acf2(diff(food))
+
+#select two models
+foodfit1 = Arima(food,order=c(0, 1, 1))
+foodfit2 = Arima(food,order=c(1, 1, 0))
+
+#evaluate residuals
+checkresiduals(foodfit1)
+checkresiduals(foodfit2)
+
+#AIC and BIC
+foodaic1 = round(AIC(foodfit1),2)
+foodaic1
+foodaic2 = round(AIC(foodfit2),2)
+foodaic2
+foodbic1 = round(BIC(foodfit1),2)
+foodbic1
+foodbic2 = round(BIC(foodfit2),2)
+foodbic2
+
+#forecast with best model
+plot(forecast(foodfit2))
+
+#plot the original data with the fitted model
+plot(foodfit2$x)
+lines(foodfit2$fitted, col = "red")
+legend("bottomright", legend=c("Original Data", "ARIMA(1,1,0)"),
+       col = c("black", "red"),
+       lty = 1)
+```
+
